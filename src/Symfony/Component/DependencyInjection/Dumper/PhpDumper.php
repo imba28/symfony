@@ -1915,6 +1915,22 @@ EOF;
         return str_starts_with($class, '\\') ? $class : '\\'.$class;
     }
 
+    private static function containsEnum(array $items): bool
+    {
+        foreach ($items as $item) {
+            if (is_array($item)) {
+                if (self::containsEnum($items)) {
+                    return true;
+                }
+            }
+            if ($item instanceof \UnitEnum) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function dumpParameter(string $name): string
     {
         if ($this->container->hasParameter($name)) {
@@ -1925,7 +1941,8 @@ EOF;
                 return $dumpedValue;
             }
 
-            if (!preg_match("/\\\$this->(?:getEnv\('(?:[-.\w\\\\]*+:)*+\w++'\)|targetDir\.'')/", $dumpedValue)) {
+            $hasEnum = self::containsEnum($value);
+            if (!$hasEnum && !preg_match("/\\\$this->(?:getEnv\('(?:[-.\w\\\\]*+:)*+\w++'\)|targetDir\.'')/", $dumpedValue)) {
                 return sprintf('$this->parameters[%s]', $this->doExport($name));
             }
         }

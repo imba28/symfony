@@ -37,12 +37,14 @@ use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceException;
 use Symfony\Component\DependencyInjection\LazyProxy\PhpDumper\NullDumper;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Component\DependencyInjection\Tests\Compiler\Foo;
 use Symfony\Component\DependencyInjection\Tests\Compiler\Wither;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\CustomDefinition;
+use Symfony\Component\DependencyInjection\Tests\Fixtures\FooClassWithEnumArrayAttribute;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\FooClassWithEnumAttribute;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\FooUnitEnum;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\FooWithAbstractArgument;
@@ -1256,6 +1258,38 @@ class PhpDumperTest extends TestCase
             ],
             default => throw new ParameterNotFoundException($name),
         };
+%A
+PHP
+            , $dumpedContainer
+        );
+    }
+
+    public function testDumpHandlesArrayOfEnumerations()
+    {
+        $container = new ContainerBuilder();
+        $container
+            ->register('foo', FooClassWithEnumArrayAttribute::class)
+            ->setPublic(true)
+            ->addArgument(new Parameter('enum_array'));
+
+        $container->setParameter('enum_array', [FooUnitEnum::BAR, FooUnitEnum::FOO]);
+        $container->compile();
+
+        $dumper = new PhpDumper($container);
+        eval('?>'.$dumpedContainer = $dumper->dump([
+                'class' => 'Symfony_DI_PhpDumper_Test_Autowire_Array_Of_Enumerations',
+            ]));
+
+        /** @var Container $container */
+        $container = new \Symfony_DI_PhpDumper_Test_Autowire_Array_Of_Enumerations();
+
+        $this->assertSame([FooUnitEnum::BAR, FooUnitEnum::FOO], $container->get('foo')->getBar());
+        $this->assertStringMatchesFormat(<<<'PHP'
+%A
+    protected function getFooService()
+    {
+        return $this->services['foo'] = new \Symfony\Component\DependencyInjection\Tests\Fixtures\FooClassWithEnumArrayAttribute($this->getParameter('enum_array'));
+    }
 %A
 PHP
             , $dumpedContainer
