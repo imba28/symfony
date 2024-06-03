@@ -124,6 +124,22 @@ class CidrValidatorTest extends ConstraintValidatorTestCase
     }
 
     /**
+     * @dataProvider getOutOfRangeNetmaskForIpv4Address
+     */
+    public function testOutOfRangeNetmaskForIpv4Address(string $cidr)
+    {
+        $cidrConstraint = new Cidr();
+        $this->validator->validate($cidr, $cidrConstraint);
+
+        $this
+            ->buildViolation('The value of the netmask should be between {{ min }} and {{ max }}.')
+            ->setParameter('{{ min }}', 0)
+            ->setParameter('{{ max }}', 32)
+            ->setCode(Cidr::OUT_OF_RANGE_ERROR)
+            ->assertRaised();
+    }
+
+    /**
      * @dataProvider getWithWrongVersion
      */
     public function testWrongVersion(string $cidr, string $version)
@@ -241,8 +257,15 @@ class CidrValidatorTest extends ConstraintValidatorTestCase
     {
         return [
             ['10.0.0.0/24', Ip::V4, 10, 20],
-            ['10.0.0.0/128'],
             ['2001:0DB8:85A3:0000:0000:8A2E:0370:7334/24', Ip::V6, 10, 20],
+        ];
+    }
+
+    public static function getOutOfRangeNetmaskForIpv4Address(): array
+    {
+        return [
+            ['10.0.0.0/128'],
+            ['10.0.0.0/33'],
         ];
     }
 
